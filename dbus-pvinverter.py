@@ -92,7 +92,7 @@ class DbusService:
     return int(value)
   
   
-  def _getSStatusUrl(self):
+  def _getStatusUrl(self):
     config = self._getConfig()
     accessType = config['DEFAULT']['AccessType']
     
