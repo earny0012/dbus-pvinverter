@@ -20,8 +20,8 @@ sys.path.insert(1, os.path.join(os.path.dirname(__file__), '/opt/victronenergy/d
 from vedbus import VeDbusService
 
 
-class DbusService:
-  def __init__(self, servicename, paths, productname='Powador', connection='HTTP JSON service'):
+class DbusShelly1pmService:
+  def __init__(self, servicename, paths, productname='Shelly 1PM', connection='Shelly 1PM HTTP JSON service'):
     config = self._getConfig()
     deviceinstance = int(config['DEFAULT']['Deviceinstance'])
     customname = config['DEFAULT']['CustomName']
@@ -48,7 +48,7 @@ class DbusService:
     self._dbusservice.add_path('/FirmwareVersion', 0.1)
     self._dbusservice.add_path('/HardwareVersion', 0)
     self._dbusservice.add_path('/Position', 0) # normaly only needed for pvinverter
-    self._dbusservice.add_path('/Serial', self._getSerial())
+    self._dbusservice.add_path('/Serial', self._getShellySerial())
     self._dbusservice.add_path('/UpdateIndex', 0)
     self._dbusservice.add_path('/StatusCode', 0)  # Dummy path so VRM detects us as a PV-inverter.
     
@@ -66,9 +66,9 @@ class DbusService:
     # add _signOfLife 'timer' to get feedback in log every 5minutes
     gobject.timeout_add(self._getSignOfLifeInterval()*60*1000, self._signOfLife)
  
-  def _getSerial(self):
-    meter_data = self._getData()  
-    
+  def _getShellySerial(self):
+    meter_data = self._getShellyConfig()  
+      
     if not meter_data['mac']:
         raise ValueError("Response does not contain 'mac' attribute")
     
@@ -92,26 +92,38 @@ class DbusService:
     return int(value)
   
   
-  def _getStatusUrl(self):
+  def _getShellyStatusUrl(self):
     config = self._getConfig()
     accessType = config['DEFAULT']['AccessType']
     
     if accessType == 'OnPremise': 
-        URL = "http://%s:%s@%s/status" % (config['ONPREMISE']['Username'], config['ONPREMISE']['Password'], config['ONPREMISE']['Host'])
+        URL = "http://%s:%s@%s/rpc/Switch.GetStatus?id=0" % (config['ONPREMISE']['Username'], config['ONPREMISE']['Password'], config['ONPREMISE']['Host'])
         URL = URL.replace(":@", "")
     else:
         raise ValueError("AccessType %s is not supported" % (config['DEFAULT']['AccessType']))
     
     return URL
+   
+  def _getShellyConfigUrl(self):
+    config = self._getConfig()
+    accessType = config['DEFAULT']['AccessType']
     
+    if accessType == 'OnPremise': 
+        URL = "http://%s:%s@%s/rpc/Sys.GetStatus" % (config['ONPREMISE']['Username'], config['ONPREMISE']['Password'], config['ONPREMISE']['Host'])
+        URL = URL.replace(":@", "")
+    else:
+        raise ValueError("AccessType %s is not supported" % (config['DEFAULT']['AccessType']))
+    
+    return URL
+   
  
-  def _getData(self):
-    URL = self._getStatusUrl()
+  def _getShellyData(self):
+    URL = self._getShellyStatusUrl()
     meter_r = requests.get(url = URL)
-    
+        
     # check for response
     if not meter_r:
-        raise ConnectionError("No response from PV Inverter - %s" % (URL))
+        raise ConnectionError("No response from Shelly Plus1PM - %s" % (URL))
     
     meter_data = meter_r.json()     
     
@@ -123,6 +135,24 @@ class DbusService:
     return meter_data
  
  
+  def _getShellyConfig(self):
+    URL = self._getShellyConfigUrl()
+    meter_r = requests.get(url = URL)
+        
+    # check for response
+    if not meter_r:
+        raise ConnectionError("No response from Shelly Plus1PM - %s" % (URL))
+    
+    meter_data = meter_r.json()     
+    
+    # check for Json
+    if not meter_data:
+        raise ValueError("Converting response to JSON failed")
+    
+    
+    return meter_data
+
+ 
   def _signOfLife(self):
     logging.info("--- Start: sign of life ---")
     logging.info("Last _update() call: %s" % (self._lastUpdate))
@@ -132,8 +162,8 @@ class DbusService:
  
   def _update(self):   
     try:
-       #get data from PV Inverter
-       meter_data = self._getData()
+       #get data from Shelly 1pm
+       meter_data = self._getShellyData()
        
        config = self._getConfig()
        str(config['DEFAULT']['Phase'])
@@ -145,8 +175,8 @@ class DbusService:
          pre = '/Ac/' + phase
          
          if phase == pvinverter_phase:
-           power = meter_data['meters'][0]['power']
-           total = meter_data['meters'][0]['total']
+           power = meter_data['apower']
+           total = meter_data['aenergy']['total']
            voltage = 230
            current = power / voltage
            
@@ -214,7 +244,7 @@ def main():
       _v = lambda p, v: (str(round(v, 1)) + 'V')   
      
       #start our main-service
-      pvac_output = DbusService(
+      pvac_output = DbusShelly1pmService(
         servicename='com.victronenergy.pvinverter',
         paths={
           '/Ac/Energy/Forward': {'initial': None, 'textformat': _kwh}, # energy produced by pv inverter
