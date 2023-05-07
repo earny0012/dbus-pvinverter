@@ -20,8 +20,8 @@ sys.path.insert(1, os.path.join(os.path.dirname(__file__), '/opt/victronenergy/d
 from vedbus import VeDbusService
 
 
-class DbusShelly1pmService:
-  def __init__(self, servicename, paths, productname='Shelly 1PM', connection='Shelly 1PM HTTP JSON service'):
+class DbusPowadorService:
+  def __init__(self, servicename, paths, productname='Powador', connection='HTTP JSON service'):
     config = self._getConfig()
     deviceinstance = int(config['DEFAULT']['Deviceinstance'])
     customname = config['DEFAULT']['CustomName']
@@ -48,7 +48,7 @@ class DbusShelly1pmService:
     self._dbusservice.add_path('/FirmwareVersion', 0.1)
     self._dbusservice.add_path('/HardwareVersion', 0)
     self._dbusservice.add_path('/Position', 0) # normaly only needed for pvinverter
-    self._dbusservice.add_path('/Serial', self._getShellySerial())
+    self._dbusservice.add_path('/Serial', self._getSerial())
     self._dbusservice.add_path('/UpdateIndex', 0)
     self._dbusservice.add_path('/StatusCode', 0)  # Dummy path so VRM detects us as a PV-inverter.
     
@@ -66,8 +66,8 @@ class DbusShelly1pmService:
     # add _signOfLife 'timer' to get feedback in log every 5minutes
     gobject.timeout_add(self._getSignOfLifeInterval()*60*1000, self._signOfLife)
  
-  def _getShellySerial(self):
-    meter_data = self._getShellyData()  
+  def _getSerial(self):
+    meter_data = self._getData()  
     
     if not meter_data['mac']:
         raise ValueError("Response does not contain 'mac' attribute")
@@ -92,7 +92,7 @@ class DbusShelly1pmService:
     return int(value)
   
   
-  def _getShellyStatusUrl(self):
+  def _getSStatusUrl(self):
     config = self._getConfig()
     accessType = config['DEFAULT']['AccessType']
     
@@ -105,13 +105,13 @@ class DbusShelly1pmService:
     return URL
     
  
-  def _getShellyData(self):
-    URL = self._getShellyStatusUrl()
+  def _getData(self):
+    URL = self._getStatusUrl()
     meter_r = requests.get(url = URL)
     
     # check for response
     if not meter_r:
-        raise ConnectionError("No response from Shelly 1PM - %s" % (URL))
+        raise ConnectionError("No response from PV Inverter - %s" % (URL))
     
     meter_data = meter_r.json()     
     
@@ -132,8 +132,8 @@ class DbusShelly1pmService:
  
   def _update(self):   
     try:
-       #get data from Shelly 1pm
-       meter_data = self._getShellyData()
+       #get data from PV Inverter
+       meter_data = self._getData()
        
        config = self._getConfig()
        str(config['DEFAULT']['Phase'])
@@ -214,7 +214,7 @@ def main():
       _v = lambda p, v: (str(round(v, 1)) + 'V')   
      
       #start our main-service
-      pvac_output = DbusShelly1pmService(
+      pvac_output = DbusService(
         servicename='com.victronenergy.pvinverter',
         paths={
           '/Ac/Energy/Forward': {'initial': None, 'textformat': _kwh}, # energy produced by pv inverter
