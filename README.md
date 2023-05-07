@@ -56,11 +56,11 @@ After that call the install.sh script.
 
 The following script should do everything for you:
 ```
-wget https://github.com/vikt0rm/dbus-shelly-1pm-pvinverter/archive/refs/heads/main.zip
-unzip main.zip "dbus-shelly-1pm-pvinverter-main/*" -d /data
-mv /data/dbus-shelly-1pm-pvinverter-main /data/dbus-shelly-1pm-pvinverter
-chmod a+x /data/dbus-shelly-1pm-pvinverter/install.sh
-/data/dbus-shelly-1pm-pvinverter/install.sh
+wget https://github.com/earny0012/dbus-pvinverter/archive/refs/heads/main.zip
+unzip main.zip "dbus-pvinverter-main/*" -d /data
+mv /data/dbus-pvinverter-main /data/dbus-pvinverter
+chmod a+x /data/dbus-pvinverter/install.sh
+/data/dbus-pvinverter/install.sh
 rm main.zip
 ```
 ⚠️ Check configuration after that - because service is already installed an running and with wrong connection data (host, username, pwd) you will spam the log-file
