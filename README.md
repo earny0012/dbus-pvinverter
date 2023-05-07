@@ -1,4 +1,4 @@
-# dbus-shelly-1pm-pvinverter
+# dbus-pvinverter
 Integrate Shelly 1PM into Victron Energies Venus OS
 
 ## Purpose
